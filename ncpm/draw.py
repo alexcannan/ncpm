@@ -2,6 +2,7 @@
 given nodes on the edges of a square, generates a non-crossing perfect matching and draws with bezier curves
 """
 
+import math
 import random
 
 from PIL import Image, ImageDraw
@@ -39,6 +40,10 @@ def generate_matching(n_nodes: int) -> list[tuple[int]]:
             continue
         # if the distance between the indices is odd, that means an even number between them, add to matches
         dist = distance_between_nodes(*pair)
+        if dist == 1:
+            # if the distance is 1, try and choose another a certain % of the time
+            if random.random() < 0.9:
+                continue
         if dist % 2 == 1:
             print(f"adding {pair} with distance {dist}")
             matches.append(pair)
@@ -92,6 +97,7 @@ def make_bezier(xys):
 def draw_square(x_nodes: int=3, y_nodes: int=3):
     width = 1000
     height = 1000
+    max_distance = math.sqrt(width ** 2 + height ** 2)
     im = Image.new("RGB", (width, height), "black")
     draw = ImageDraw.Draw(im)
     n_nodes = 2 * x_nodes + 2 * y_nodes
@@ -127,6 +133,13 @@ def draw_square(x_nodes: int=3, y_nodes: int=3):
         p1 = edge_coordinates[match[1]]
         c0 = control_coordinates[match[0]]
         c1 = control_coordinates[match[1]]
+        # adjust control points towards center the greater the distance between nodes are
+        match_distance = math.sqrt((p0[0] - p1[0])**2 + (p0[1] - p1[1])**2)
+        control_bias = -0.3
+        control_weight = 0.5
+        control_adjustment = (match_distance / max_distance + control_bias) * control_weight
+        c0 = (c0[0] + (width / 2 - c0[0]) * control_adjustment, c0[1] + (height / 2 - c0[1]) * control_adjustment)
+        c1 = (c1[0] + (width / 2 - c1[0]) * control_adjustment, c1[1] + (height / 2 - c1[1]) * control_adjustment)
         bezier = make_bezier([p0, c0, c1, p1])
         points = bezier(ts)
         for i in range(len(points) - 1):
@@ -139,7 +152,7 @@ def draw_square_grid(grid_size: int, *args, **kwargs):
     for i in range(grid_size):
         for j in range(grid_size):
             im.paste(draw_square(*args, **kwargs), (i * 1000, j * 1000))
-    return im.resize((6000, 6000), resample=Image.ANTIALIAS)
+    return im.resize((6000, 6000), resample=Image.Resampling.BICUBIC)
 
 
 if __name__ == "__main__":
