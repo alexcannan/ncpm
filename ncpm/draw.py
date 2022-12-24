@@ -2,7 +2,6 @@
 given nodes on the edges of a square, generates a non-crossing perfect matching and draws with bezier curves
 """
 
-import itertools
 import random
 
 from PIL import Image, ImageDraw
@@ -40,7 +39,6 @@ def generate_matching(n_nodes: int) -> list[tuple[int]]:
             continue
         # if the distance between the indices is odd, that means an even number between them, add to matches
         dist = distance_between_nodes(*pair)
-        print(pair, dist)
         if dist % 2 == 1:
             print(f"adding {pair} with distance {dist}")
             matches.append(pair)
@@ -48,6 +46,47 @@ def generate_matching(n_nodes: int) -> list[tuple[int]]:
         else:
             continue
     return matches
+
+
+def pascal_row(n, memo={}):
+    # https://stackoverflow.com/questions/246525/how-can-i-draw-a-bezier-curve-using-pythons-pil
+    # This returns the nth row of Pascal's Triangle
+    if n in memo:
+        return memo[n]
+    result = [1]
+    x, numerator = 1, n
+    for denominator in range(1, n//2+1):
+        # print(numerator,denominator,x)
+        x *= numerator
+        x /= denominator
+        result.append(x)
+        numerator -= 1
+    if n&1 == 0:
+        # n is even
+        result.extend(reversed(result[:-1]))
+    else:
+        result.extend(reversed(result))
+    memo[n] = result
+    return result
+
+
+def make_bezier(xys):
+    # https://stackoverflow.com/questions/246525/how-can-i-draw-a-bezier-curve-using-pythons-pil
+    # xys should be a sequence of 2-tuples (Bezier control points)
+    n = len(xys)
+    combinations = pascal_row(n-1)
+    def bezier(ts):
+        # This uses the generalized formula for bezier curves
+        # http://en.wikipedia.org/wiki/B%C3%A9zier_curve#Generalization
+        result = []
+        for t in ts:
+            tpowers = (t**i for i in range(n))
+            upowers = reversed([(1-t)**i for i in range(n)])
+            coefs = [c*a*b for c, a, b in zip(combinations, tpowers, upowers)]
+            result.append(
+                tuple(sum([coef*p for coef, p in zip(coefs, ps)]) for ps in zip(*xys)))
+        return result
+    return bezier
 
 
 def draw_square(x_nodes: int=3, y_nodes: int=3):
@@ -67,17 +106,31 @@ def draw_square(x_nodes: int=3, y_nodes: int=3):
         y = (i + 1) * y_spacing
         draw.ellipse((-5, y - 5, 5, y + 5), fill="white")
         draw.ellipse((width - 5, y - 5, width + 5, y + 5), fill="white")
+    # get coordinates of nodes on edges
+    edge_iterator = [(x_spacing, 0)] * x_nodes + [(x_spacing, y_spacing)] + [(0, y_spacing)] * (y_nodes-1) + [(-x_spacing, y_spacing)] + [(-x_spacing, 0)] * (x_nodes-1) + [(-x_spacing, -y_spacing)] + [(0, -y_spacing)] * (y_nodes-1)
+    control_iterator = [(x_spacing, y_spacing)] + [(x_spacing, 0)] * (x_nodes-1) + [(0,0)] + [(0, y_spacing)] * (y_nodes-1) + [(0,0)] + [(-x_spacing, 0)] * (x_nodes-1) + [(0,0)] + [(0, -y_spacing)] * (y_nodes-1)
+    edge_coordinates = []
+    prev_coord = (0, 0)
+    for coord in edge_iterator:
+        edge_coordinates.append((prev_coord[0] + coord[0], prev_coord[1] + coord[1]))
+        prev_coord = edge_coordinates[-1]
+    control_coordinates = []
+    prev_coord = (0, 0)
+    for coord in control_iterator:
+        control_coordinates.append((prev_coord[0] + coord[0], prev_coord[1] + coord[1]))
+        prev_coord = control_coordinates[-1]
+    # generate matchings and draw
     matches = generate_matching(n_nodes)
+    ts = [t/100.0 for t in range(101)]
     for match in matches:
-        edge_iterator = [(x_spacing, 0)] * x_nodes + [(x_spacing, y_spacing)] + [(0, y_spacing)] * (y_nodes-1) + [(-x_spacing, y_spacing)] + [(-x_spacing, 0)] * (x_nodes-1) + [(-x_spacing, -y_spacing)] + [(0, -y_spacing)] * (y_nodes-1)
-        edge_coordinates = []
-        prev_coord = (0, 0)
-        for coord in edge_iterator:
-            edge_coordinates.append((prev_coord[0] + coord[0], prev_coord[1] + coord[1]))
-            prev_coord = edge_coordinates[-1]
         p0 = edge_coordinates[match[0]]
         p1 = edge_coordinates[match[1]]
-        draw.line((p0[0], p0[1], p1[0], p1[1]), fill="white", width=4)
+        c0 = control_coordinates[match[0]]
+        c1 = control_coordinates[match[1]]
+        bezier = make_bezier([p0, c0, c1, p1])
+        points = bezier(ts)
+        for i in range(len(points) - 1):
+            draw.line((points[i], points[i+1]), fill="white", width=2)
     im.show()
 
 
