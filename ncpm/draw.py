@@ -131,7 +131,15 @@ def draw_square(x_nodes: int=3, y_nodes: int=3):
         points = bezier(ts)
         for i in range(len(points) - 1):
             draw.line((points[i], points[i+1]), fill="white", width=2)
-    im.show()
+    return im
+
+
+def draw_square_grid(grid_size: int, *args, **kwargs):
+    im = Image.new("RGB", (grid_size * 1000, grid_size * 1000), "black")
+    for i in range(grid_size):
+        for j in range(grid_size):
+            im.paste(draw_square(*args, **kwargs), (i * 1000, j * 1000))
+    return im.resize((6000, 6000), resample=Image.ANTIALIAS)
 
 
 if __name__ == "__main__":
@@ -139,5 +147,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("x_nodes", type=int)
     parser.add_argument("y_nodes", type=int)
+    parser.add_argument("--grid", action="store_true", help="create a grid of squares")
+    parser.add_argument("--grid-size", type=int, default=5, help="size of grid")
     args = parser.parse_args()
-    draw_square(args.x_nodes, args.y_nodes)
+    if args.grid:
+        draw_square_grid(args.grid_size, args.x_nodes, args.y_nodes).show()
+    else:
+        draw_square(args.x_nodes, args.y_nodes).show()
