@@ -2,10 +2,14 @@
 given nodes on the edges of a square, generates a non-crossing perfect matching and draws with bezier curves
 """
 
+import itertools
 import math
 import random
 
-from PIL import Image, ImageDraw
+import matplotlib.cm as cm
+import numpy as np
+from PIL import Image, ImageDraw, ImageColor
+from tqdm import tqdm
 
 
 def generate_matching(n_nodes: int) -> list[tuple[int]]:
@@ -94,24 +98,26 @@ def make_bezier(xys):
     return bezier
 
 
-def draw_square(x_nodes: int=3, y_nodes: int=3):
+def draw_square(x_nodes: int=3, y_nodes: int=3, draw_points: bool=False, samples: int=100):
     width = 1000
     height = 1000
     max_distance = math.sqrt(width ** 2 + height ** 2)
     im = Image.new("RGB", (width, height), "black")
     draw = ImageDraw.Draw(im)
     n_nodes = 2 * x_nodes + 2 * y_nodes
-    # draw nodes on edges
     x_spacing = width / (x_nodes + 1)
-    for i in range(x_nodes):
-        x = (i + 1) * x_spacing
-        draw.ellipse((x - 5, -5, x + 5, 5), fill="white")
-        draw.ellipse((x - 5, height - 5, x + 5, height + 5), fill="white")
     y_spacing = height / (y_nodes + 1)
-    for i in range(y_nodes):
-        y = (i + 1) * y_spacing
-        draw.ellipse((-5, y - 5, 5, y + 5), fill="white")
-        draw.ellipse((width - 5, y - 5, width + 5, y + 5), fill="white")
+    ts = [t/samples for t in range(samples+1)]
+    if draw_points:
+        # draw nodes on edges
+        for i in range(x_nodes):
+            x = (i + 1) * x_spacing
+            draw.ellipse((x - 5, -5, x + 5, 5), fill="white")
+            draw.ellipse((x - 5, height - 5, x + 5, height + 5), fill="white")
+        for i in range(y_nodes):
+            y = (i + 1) * y_spacing
+            draw.ellipse((-5, y - 5, 5, y + 5), fill="white")
+            draw.ellipse((width - 5, y - 5, width + 5, y + 5), fill="white")
     # get coordinates of nodes on edges
     edge_iterator = [(x_spacing, 0)] * x_nodes + [(x_spacing, y_spacing)] + [(0, y_spacing)] * (y_nodes-1) + [(-x_spacing, y_spacing)] + [(-x_spacing, 0)] * (x_nodes-1) + [(-x_spacing, -y_spacing)] + [(0, -y_spacing)] * (y_nodes-1)
     control_iterator = [(x_spacing, y_spacing)] + [(x_spacing, 0)] * (x_nodes-1) + [(0,0)] + [(0, y_spacing)] * (y_nodes-1) + [(0,0)] + [(-x_spacing, 0)] * (x_nodes-1) + [(0,0)] + [(0, -y_spacing)] * (y_nodes-1)
@@ -127,7 +133,6 @@ def draw_square(x_nodes: int=3, y_nodes: int=3):
         prev_coord = control_coordinates[-1]
     # generate matchings and draw
     matches = generate_matching(n_nodes)
-    ts = [t/100.0 for t in range(101)]
     for match in matches:
         p0 = edge_coordinates[match[0]]
         p1 = edge_coordinates[match[1]]
@@ -147,12 +152,51 @@ def draw_square(x_nodes: int=3, y_nodes: int=3):
     return im
 
 
-def draw_square_grid(grid_size: int, *args, **kwargs):
-    im = Image.new("RGB", (grid_size * 1000, grid_size * 1000), "black")
+def color_generator(type: str="discrete"):
+    if type == "discrete":
+        for color in itertools.cycle(["red", "green", "blue", "yellow", "purple", "orange", "pink", "cyan", "magenta"]):
+            yield ImageColor.getrgb(color)
+    elif type == "grayscale":
+        for i in itertools.cycle(itertools.chain(range(1, 256), range(255, 0, -1))):
+            yield (i, i, i)
+    elif type == "rainbow":
+        for i in itertools.cycle(range(256)):
+            yield ImageColor.getrgb(f"hsl({i}, 100%, 50%)")
+    elif type == "rainbow2":
+        for i in itertools.cycle(range(256)):
+            yield ImageColor.getrgb(f"hsl({i}, 100%, 50%)")
+            yield ImageColor.getrgb(f"hsl({i+128}, 100%, 50%)")
+    elif type == "rainbow3":
+        for i in itertools.cycle(range(256)):
+            yield ImageColor.getrgb(f"hsl({i}, 100%, 50%)")
+            yield ImageColor.getrgb(f"hsl({i+85}, 100%, 50%)")
+            yield ImageColor.getrgb(f"hsl({i+171}, 100%, 50%)")
+    elif type == "prism":
+        for i in itertools.cycle(itertools.chain(np.linspace(0, 1, 100), np.linspace(1, 0, 100))):
+            c = tuple([int(255*x) for x in cm.prism(i)])
+            yield c
+
+def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, *args, **kwargs):
+    tile_width = 1000
+    tile_height = 1000
+    im = Image.new("RGB", (grid_size * tile_width, grid_size * tile_height), "black")
     for i in range(grid_size):
         for j in range(grid_size):
-            im.paste(draw_square(*args, **kwargs), (i * 1000, j * 1000))
-    return im.resize((6000, 6000), resample=Image.Resampling.BICUBIC)
+            im.paste(draw_square(x_nodes, y_nodes, *args, **kwargs), (i * 1000, j * 1000))
+    grid_width = 6000
+    grid_height = 6000
+    im = im.resize((grid_width, grid_height), resample=Image.Resampling.BICUBIC)
+    horiz_color_points = itertools.product(np.linspace(0, im.width, (x_nodes+1) * grid_size, dtype=int), np.linspace(0, im.height, grid_size+1, dtype=int))
+    vert_color_points = itertools.product(np.linspace(0, im.width, grid_size+1, dtype=int), np.linspace(0, im.height, (y_nodes+1) * grid_size, dtype=int))
+    color_points = set(horiz_color_points) | set(vert_color_points)
+    color_points = sorted(color_points, key=lambda x: math.sqrt(x[0]**2 + x[1]**2))
+    color_iter = color_generator("prism")
+    for x, y in tqdm(color_points, desc="filling colors"):
+        x = min(x, im.width - 1)
+        y = min(y, im.height - 1)
+        if im.getpixel((x, y)) == (0, 0, 0):
+            ImageDraw.floodfill(im, (x, y), next(color_iter))
+    return im
 
 
 if __name__ == "__main__":
@@ -160,10 +204,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("x_nodes", type=int)
     parser.add_argument("y_nodes", type=int)
+    parser.add_argument("--points", action="store_true", help="draw points on edges of tiles")
+    parser.add_argument("--samples", type=int, default=100, help="number of samples per curve")
     parser.add_argument("--grid", action="store_true", help="create a grid of squares")
     parser.add_argument("--grid-size", type=int, default=5, help="size of grid")
     args = parser.parse_args()
     if args.grid:
-        draw_square_grid(args.grid_size, args.x_nodes, args.y_nodes).show()
+        draw_square_grid(args.grid_size, args.x_nodes, args.y_nodes, draw_points=args.points, samples=args.samples).show()
     else:
-        draw_square(args.x_nodes, args.y_nodes).show()
+        draw_square(args.x_nodes, args.y_nodes, draw_points=args.points, samples=args.samples).show()

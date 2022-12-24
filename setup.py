@@ -8,5 +8,8 @@ setup(
     packages=find_packages(),
     install_requires=[
         'Pillow',
+        'numpy',
+        'tqdm',
+        'matplotlib',
     ],
 )
