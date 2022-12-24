@@ -12,10 +12,41 @@ def generate_matching(n_nodes: int) -> list[tuple[int]]:
     """ given a number of nodes, generates a non-crossing perfect matching """
     assert n_nodes % 2 == 0, "number of nodes must be even"
     nodes = list(range(n_nodes))
+    def distance_between_nodes(node1: int, node2: int) -> int:
+        return abs(node1 - node2) % n_nodes
     matches = []
     selected_nodes = set()
-    random.shuffle(nodes)
-    matches = [(nodes[i], nodes[i + 1]) for i in range(0, n_nodes, 2)]
+    while (remaining_nodes := list(set(nodes) - selected_nodes)):
+        if len(remaining_nodes) == 2:
+            # XXX: this is a hack, sometimes this gets stuck on last 2 but unsure why
+            matches.append(tuple(remaining_nodes))
+            break
+        pair = sorted(random.sample(remaining_nodes, 2))
+        # if any of the nodes in between are already selected, try again
+        if any(node in selected_nodes for node in range(*pair)):
+            continue
+        # if the number of unselected nodes on either side of the pair, before any other selected node, is odd, try again
+        left_iter = (pair[0] - 1) % n_nodes
+        left_count = 0
+        while nodes[left_iter] not in selected_nodes and nodes[left_iter] != pair[1]:
+            left_count += 1
+            left_iter = (left_iter - 1) % n_nodes
+        right_iter = (pair[1] + 1) % n_nodes
+        right_count = 0
+        while nodes[right_iter] not in selected_nodes and nodes[right_iter] != pair[0]:
+            right_count += 1
+            right_iter = (right_iter + 1) % n_nodes
+        if left_count % 2 == 1 or right_count % 2 == 1:
+            continue
+        # if the distance between the indices is odd, that means an even number between them, add to matches
+        dist = distance_between_nodes(*pair)
+        print(pair, dist)
+        if dist % 2 == 1:
+            print(f"adding {pair} with distance {dist}")
+            matches.append(pair)
+            selected_nodes.update(pair)
+        else:
+            continue
     return matches
 
 
@@ -44,13 +75,16 @@ def draw_square(x_nodes: int=3, y_nodes: int=3):
         for coord in edge_iterator:
             edge_coordinates.append((prev_coord[0] + coord[0], prev_coord[1] + coord[1]))
             prev_coord = edge_coordinates[-1]
-        print('edge_coords', edge_coordinates)
         p0 = edge_coordinates[match[0]]
         p1 = edge_coordinates[match[1]]
-        print(p0, p1)
         draw.line((p0[0], p0[1], p1[0], p1[1]), fill="white", width=4)
     im.show()
 
 
 if __name__ == "__main__":
-    draw_square(x_nodes=5, y_nodes=5)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("x_nodes", type=int)
+    parser.add_argument("y_nodes", type=int)
+    args = parser.parse_args()
+    draw_square(args.x_nodes, args.y_nodes)
