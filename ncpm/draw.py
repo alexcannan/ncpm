@@ -167,16 +167,16 @@ def color_generator(type: str="discrete"):
             yield ImageColor.getrgb(f"hsl({i}, 100%, 50%)")
             yield ImageColor.getrgb(f"hsl({i+128}, 100%, 50%)")
     elif type == "rainbow3":
-        for i in itertools.cycle(range(256)):
-            yield ImageColor.getrgb(f"hsl({i}, 100%, 50%)")
-            yield ImageColor.getrgb(f"hsl({i+85}, 100%, 50%)")
-            yield ImageColor.getrgb(f"hsl({i+171}, 100%, 50%)")
+        for i in itertools.cycle(range(0, 256, 3)):
+            yield ImageColor.getrgb(f"hsl({i}, 50%, 50%)")
+            yield ImageColor.getrgb(f"hsl({i+85}, 50%, 50%)")
+            yield ImageColor.getrgb(f"hsl({i+171}, 50%, 50%)")
     elif type == "prism":
         for i in itertools.cycle(itertools.chain(np.linspace(0, 1, 100), np.linspace(1, 0, 100))):
             c = tuple([int(255*x) for x in cm.prism(i)])
             yield c
 
-def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, *args, **kwargs):
+def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, color_type: str="prism", *args, **kwargs):
     tile_width = 1000
     tile_height = 1000
     im = Image.new("RGB", (grid_size * tile_width, grid_size * tile_height), "black")
@@ -186,11 +186,13 @@ def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, *args, **kwargs
     grid_width = 6000
     grid_height = 6000
     im = im.resize((grid_width, grid_height), resample=Image.Resampling.BICUBIC)
-    horiz_color_points = itertools.product(np.linspace(0, im.width, (x_nodes+1) * grid_size, dtype=int), np.linspace(0, im.height, grid_size+1, dtype=int))
-    vert_color_points = itertools.product(np.linspace(0, im.width, grid_size+1, dtype=int), np.linspace(0, im.height, (y_nodes+1) * grid_size, dtype=int))
+    xbuf = im.width / grid_size / (x_nodes+1) / 2
+    ybuf = im.height / grid_size / (y_nodes+1) / 2
+    horiz_color_points = itertools.product(np.linspace(xbuf, im.width-xbuf, (x_nodes+1) * grid_size, dtype=int), np.linspace(0, im.height, grid_size+1, dtype=int))
+    vert_color_points = itertools.product(np.linspace(0, im.width, grid_size+1, dtype=int), np.linspace(ybuf, im.height-ybuf, (y_nodes+1) * grid_size, dtype=int))
     color_points = set(horiz_color_points) | set(vert_color_points)
     color_points = sorted(color_points, key=lambda x: math.sqrt(x[0]**2 + x[1]**2))
-    color_iter = color_generator("prism")
+    color_iter = color_generator(color_type)
     for x, y in tqdm(color_points, desc="filling colors"):
         x = min(x, im.width - 1)
         y = min(y, im.height - 1)
@@ -206,10 +208,11 @@ if __name__ == "__main__":
     parser.add_argument("y_nodes", type=int)
     parser.add_argument("--points", action="store_true", help="draw points on edges of tiles")
     parser.add_argument("--samples", type=int, default=100, help="number of samples per curve")
+    parser.add_argument("--color", type=str, default="prism", help="color type (discrete, grayscale, rainbow, rainbow2, rainbow3, prism)")
     parser.add_argument("--grid", action="store_true", help="create a grid of squares")
     parser.add_argument("--grid-size", type=int, default=5, help="size of grid")
     args = parser.parse_args()
     if args.grid:
-        draw_square_grid(args.grid_size, args.x_nodes, args.y_nodes, draw_points=args.points, samples=args.samples).show()
+        draw_square_grid(args.grid_size, args.x_nodes, args.y_nodes, draw_points=args.points, samples=args.samples, color_type=args.color).show()
     else:
         draw_square(args.x_nodes, args.y_nodes, draw_points=args.points, samples=args.samples).show()
