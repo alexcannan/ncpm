@@ -138,13 +138,6 @@ def draw_square(x_nodes: int=3, y_nodes: int=3, draw_points: bool=False, samples
         p1 = edge_coordinates[match[1]]
         c0 = control_coordinates[match[0]]
         c1 = control_coordinates[match[1]]
-        # adjust control points towards center the greater the distance between nodes are
-        match_distance = math.sqrt((p0[0] - p1[0])**2 + (p0[1] - p1[1])**2)
-        control_bias = -0.3
-        control_weight = 0.5
-        control_adjustment = (match_distance / max_distance + control_bias) * control_weight
-        c0 = (c0[0] + (width / 2 - c0[0]) * control_adjustment, c0[1] + (height / 2 - c0[1]) * control_adjustment)
-        c1 = (c1[0] + (width / 2 - c1[0]) * control_adjustment, c1[1] + (height / 2 - c1[1]) * control_adjustment)
         bezier = make_bezier([p0, c0, c1, p1])
         points = bezier(ts)
         for i in range(len(points) - 1):
