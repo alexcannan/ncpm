@@ -12,12 +12,16 @@ from PIL import Image, ImageDraw, ImageColor
 from tqdm import tqdm
 
 
+def node_distance(node1: int, node2: int, n_nodes: int) -> int:
+    """ given 2 indices of a cycle, returns the distance between them """
+    n1, n2 = sorted([node1, node2])
+    return min(n2 - n1, n1 + n_nodes - n2)
+
+
 def generate_matching(n_nodes: int) -> list[tuple[int]]:
     """ given a number of nodes, generates a non-crossing perfect matching """
     assert n_nodes % 2 == 0, "number of nodes must be even"
     nodes = list(range(n_nodes))
-    def distance_between_nodes(node1: int, node2: int) -> int:
-        return abs(node1 - node2) % n_nodes
     matches = []
     selected_nodes = set()
     while (remaining_nodes := list(set(nodes) - selected_nodes)):
@@ -43,13 +47,12 @@ def generate_matching(n_nodes: int) -> list[tuple[int]]:
         if left_count % 2 == 1 or right_count % 2 == 1:
             continue
         # if the distance between the indices is odd, that means an even number between them, add to matches
-        dist = distance_between_nodes(*pair)
+        dist = node_distance(*pair, n_nodes=n_nodes)
         if dist == 1:
             # if the distance is 1, try and choose another a certain % of the time
             if random.random() < 0.9:
                 continue
         if dist % 2 == 1:
-            print(f"adding {pair} with distance {dist}")
             matches.append(pair)
             selected_nodes.update(pair)
         else:
@@ -98,16 +101,78 @@ def make_bezier(xys):
     return bezier
 
 
-def draw_square(x_nodes: int=3, y_nodes: int=3, draw_points: bool=False, samples: int=100):
+def draw_bezier_curve(draw: ImageDraw, xys, samples=100):
+    ts = [t/samples for t in range(samples+1)]
+    bezier = make_bezier(xys)
+    points = bezier(ts)
+    for i in range(len(points) - 1):
+        draw.line((points[i], points[i+1]), fill="white", width=2)
+
+
+def square_pair_type(node1: int, node2: int, x_nodes: int, y_nodes: int) -> str:
+    """ given 2 indices of a square, returns the type of edge between them
+
+    :returns: "same", "adjacent", "opposite"
+    """
+    def index_to_edge(index: int, x_nodes: int, y_nodes: int) -> str:
+        if index < x_nodes:
+            return 0
+        elif index < x_nodes + y_nodes:
+            return 1
+        elif index < 2 * x_nodes + y_nodes:
+            return 2
+        else:
+            return 3
+    e1 = index_to_edge(node1, x_nodes, y_nodes)
+    e2 = index_to_edge(node2, x_nodes, y_nodes)
+    if e1 == e2:
+        return "same"
+    elif (e1 + 1) % 4 == e2 or (e1 - 1) % 4 == e2:
+        return "adjacent"
+    else:
+        return "opposite"
+
+
+def draw_formulaic_curve(draw: ImageDraw, x_nodes: int, y_nodes: int, x_node: int, y_node: int):
+    """ for each node pair, draw a certain curve depending on the case (same edge, adjacent edge, opposite edge) """
+    pair_type = square_pair_type(x_node, y_node, x_nodes, y_nodes)
+    width = draw._image.width
+    height = draw._image.height
+    if pair_type == "same":
+        # draw a semicircle
+        x1 = (x_node + 1) * width / (x_nodes + 1)
+        y1 = (y_node + 1) * height / (y_nodes + 1)
+        x2 = (x_node + 2) * width / (x_nodes + 1)
+        y2 = (y_node + 2) * height / (y_nodes + 1)
+        draw.arc((x1, y1, x2, y2), 0, 180, fill="white", width=2)
+    elif pair_type == "adjacent":
+        # draw a quarter circle
+        x1 = (x_node + 1) * width / (x_nodes + 1)
+        y1 = (y_node + 1) * height / (y_nodes + 1)
+        x2 = (x_node + 2) * width / (x_nodes + 1)
+        y2 = (y_node + 2) * height / (y_nodes + 1)
+        draw.arc((x1, y1, x2, y2), 0, 90, fill="white", width=2)
+    elif pair_type == "opposite":
+        # draw a bezier curve
+        x_spacing = width / (x_nodes + 1)
+        y_spacing = height / (y_nodes + 1)
+        x1 = (x_node + 1) * x_spacing
+        y1 = (y_node + 1) * y_spacing
+        x2 = (x_node + 2) * x_spacing
+        y2 = (y_node + 2) * y_spacing
+        xys = [(x1, y1), (x1, y2), (x2, y2), (x2, y1)]
+        draw_bezier_curve(draw, xys, samples=100)
+    return
+
+
+def draw_square(x_nodes: int=3, y_nodes: int=3, draw_points: bool=False, samples: int=100, curve_type: str="bezier"):
     width = 1000
     height = 1000
-    max_distance = math.sqrt(width ** 2 + height ** 2)
     im = Image.new("RGB", (width, height), "black")
     draw = ImageDraw.Draw(im)
     n_nodes = 2 * x_nodes + 2 * y_nodes
     x_spacing = width / (x_nodes + 1)
     y_spacing = height / (y_nodes + 1)
-    ts = [t/samples for t in range(samples+1)]
     if draw_points:
         # draw nodes on edges
         for i in range(x_nodes):
@@ -136,12 +201,18 @@ def draw_square(x_nodes: int=3, y_nodes: int=3, draw_points: bool=False, samples
     for match in matches:
         p0 = edge_coordinates[match[0]]
         p1 = edge_coordinates[match[1]]
-        c0 = control_coordinates[match[0]]
-        c1 = control_coordinates[match[1]]
-        bezier = make_bezier([p0, c0, c1, p1])
-        points = bezier(ts)
-        for i in range(len(points) - 1):
-            draw.line((points[i], points[i+1]), fill="white", width=2)
+        if curve_type == "bezier":
+            c0 = control_coordinates[match[0]]
+            c1 = control_coordinates[match[1]]
+            draw_bezier_curve(draw, [p0, c0, c1, p1], samples)
+        elif curve_type == "bezier_centered":
+            c0 = control_coordinates[match[0]]
+            c1 = control_coordinates[match[1]]
+            draw_bezier_curve(draw, [p0, c0, (im.width / 2, im.height / 2), c1, p1], samples)
+        elif curve_type == "line":
+            draw.line((p0, p1), fill="white", width=2)
+        elif curve_type == "formulaic":
+            draw_formulaic_curve(draw, im.width, im.height, x_nodes, y_nodes, match[0], match[1])
     return im
 
 
@@ -166,8 +237,9 @@ def color_generator(type: str="discrete"):
             yield ImageColor.getrgb(f"hsl({i+171}, 50%, 50%)")
     elif type == "prism":
         for i in itertools.cycle(itertools.chain(np.linspace(0, 1, 100), np.linspace(1, 0, 100))):
-            c = tuple([int(255*x) for x in cm.prism(i)])
+            c = tuple([int(128*x) for x in cm.prism(i)])
             yield c
+
 
 def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, color_type: str="prism", *args, **kwargs):
     tile_width = 1000
@@ -202,10 +274,11 @@ if __name__ == "__main__":
     parser.add_argument("--points", action="store_true", help="draw points on edges of tiles")
     parser.add_argument("--samples", type=int, default=100, help="number of samples per curve")
     parser.add_argument("--color", type=str, default="prism", help="color type (discrete, grayscale, rainbow, rainbow2, rainbow3, prism)")
+    parser.add_argument("--curve", type=str, default="bezier", help="curve type (bezier, bezier_centered, line)")
     parser.add_argument("--grid", action="store_true", help="create a grid of squares")
     parser.add_argument("--grid-size", type=int, default=5, help="size of grid")
     args = parser.parse_args()
     if args.grid:
-        draw_square_grid(args.grid_size, args.x_nodes, args.y_nodes, draw_points=args.points, samples=args.samples, color_type=args.color).show()
+        draw_square_grid(args.grid_size, args.x_nodes, args.y_nodes, draw_points=args.points, samples=args.samples, color_type=args.color, curve_type=args.curve).show()
     else:
-        draw_square(args.x_nodes, args.y_nodes, draw_points=args.points, samples=args.samples).show()
+        draw_square(args.x_nodes, args.y_nodes, draw_points=args.points, samples=args.samples, curve_type=args.curve).show()
