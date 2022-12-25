@@ -1,5 +1,7 @@
 from PIL import ImageDraw
 
+from ncpm.draw import line_width
+
 
 def pascal_row(n, memo={}):
     # https://stackoverflow.com/questions/246525/how-can-i-draw-a-bezier-curve-using-pythons-pil
@@ -47,4 +49,4 @@ def draw_bezier_curve(draw: ImageDraw, xys, samples=100):
     bezier = make_bezier(xys)
     points = bezier(ts)
     for i in range(len(points) - 1):
-        draw.line((points[i], points[i+1]), fill="white", width=2)
+        draw.line((points[i], points[i+1]), fill="white", width=line_width)

@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw
 
 from ncpm import generate_matching
+from ncpm.draw import line_width
 from ncpm.draw.bezier import draw_bezier_curve
 from ncpm.draw.formulaic import draw_formulaic_curve
 
@@ -50,7 +51,7 @@ def draw_square(x_nodes: int=3, y_nodes: int=3, draw_points: bool=False, samples
             c1 = control_coordinates[match[1]]
             draw_bezier_curve(draw, [p0, c0, (im.width / 2, im.height / 2), c1, p1], samples)
         elif curve_type == "line":
-            draw.line((p0, p1), fill="white", width=2)
+            draw.line((p0, p1), fill="white", width=line_width)
         elif curve_type == "formulaic":
             draw_formulaic_curve(draw, x_nodes, y_nodes, match[0], match[1])
     return im

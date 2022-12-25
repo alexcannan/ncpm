@@ -1,3 +1,4 @@
+import itertools
 import random
 
 
@@ -71,3 +72,12 @@ def square_pair_type(node1: int, node2: int, x_nodes: int, y_nodes: int) -> str:
         return "adjacent"
     else:
         return "opposite"
+
+
+def square_relative_coordinates(node: int, x_nodes: int, y_nodes: int) -> tuple[float, float]:
+    """ given a node index of a square, returns the relative coordinates of the node """
+    x_spacing = 1 / (x_nodes + 1)
+    y_spacing = 1 / (y_nodes + 1)
+    edge_iterator = [(x_spacing, 0)] * x_nodes + [(x_spacing, y_spacing)] + [(0, y_spacing)] * (y_nodes-1) + [(-x_spacing, y_spacing)] + [(-x_spacing, 0)] * (x_nodes-1) + [(-x_spacing, -y_spacing)] + [(0, -y_spacing)] * (y_nodes-1)
+    node_coordinates = list(zip(*map(itertools.accumulate, zip(*edge_iterator))))
+    return node_coordinates[node]
