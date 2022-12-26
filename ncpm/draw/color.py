@@ -28,3 +28,6 @@ def color_generator(type: str="discrete"):
         for i in itertools.cycle(itertools.chain(np.linspace(0, 1, 100), np.linspace(1, 0, 100))):
             c = tuple([int(128*x) for x in cm.prism(i)])
             yield c
+    elif type == "random":
+        for i in itertools.cycle(range(256)):
+            yield tuple(np.random.randint(0, 256, 3))
