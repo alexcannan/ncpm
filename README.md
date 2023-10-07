@@ -1,5 +1,5 @@
 # ncpm
-non crossing perfect matching
+non crossing perfect matching utilized for randomly-generated tesselations
 
 https://en.wikipedia.org/wiki/Catalan_number
 
