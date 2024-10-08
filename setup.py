@@ -11,5 +11,6 @@ setup(
         'numpy',
         'tqdm',
         'matplotlib',
+        'opencv-python',
     ],
 )

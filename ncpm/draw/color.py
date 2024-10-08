@@ -34,11 +34,11 @@ def color_generator(type: str="discrete"):
             probabilities = [np.exp(-((hue - h) ** 2) / (2 * (64 / len(hues)) ** 2)) for h in hues]
             # print(hue, hues, probabilities, file=sys.stderr)
             if not all(np.random.rand() > prob for prob in probabilities):
-                # print(f"hue {hue} failed vibe check", file=sys.stderr)
+                print(f"hue {hue} failed vibe check", file=sys.stderr)
                 continue
             else:
                 hues.append(hue)
-                yield ImageColor.getrgb(f"hsl({hue}, 60%, 30%)")
+                yield ImageColor.getrgb(f"hsl({hue}, 60%, 60%)")
     elif type == "prism":
         for i in itertools.cycle(itertools.chain(np.linspace(0, 1, 100), np.linspace(1, 0, 100))):
             c = tuple([int(128*x) for x in cm.prism(i)])
