@@ -25,9 +25,9 @@ def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, *args, **kwargs
     img_binary = np.where(img_array == 0, 1, 0).astype(np.uint8)  # Invert: 0 for background, 1 for foreground
     num_labels, labels = cv2.connectedComponents(img_binary)
 
-    print(f"{num_labels=}", file=sys.stderr)
     colors = equicolors(num_labels, **kwargs)
     random.shuffle(colors)
+    print(f"{num_labels=} {len(colors)=}", file=sys.stderr)
     label_colors = {label: color for label, color in zip(range(1, num_labels), colors)}
 
     colored_img = np.zeros((*img_array.shape, 3), dtype=np.uint8)  # Prepare an RGB array

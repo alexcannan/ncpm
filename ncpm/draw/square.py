@@ -1,4 +1,4 @@
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 from ncpm import generate_matching
 from ncpm.draw import line_width
@@ -61,4 +61,8 @@ def draw_square(
             draw.line((p0, p1), fill="white", width=line_width)
         elif curve_type == "formulaic":
             draw_formulaic_curve(draw, x_nodes, y_nodes, match[0], match[1])
+    # apply a slight blur to fill in gaps
+    im = im.filter(ImageFilter.GaussianBlur(radius=1))
+    # binarize all values to 0 or 255
+    im = im.point(lambda x: 255 if x > 0 else 0)
     return im

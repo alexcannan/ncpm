@@ -1,1 +1,1 @@
-line_width = 6
+line_width = 3
