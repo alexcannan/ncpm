@@ -6,7 +6,16 @@ from ncpm.draw.bezier import draw_bezier_curve
 from ncpm.draw.formulaic import draw_formulaic_curve
 
 
-def draw_square(x_nodes: int=3, y_nodes: int=3, width: int=1000, height: int=1000, draw_points: bool=False, samples: int=100, curve_type: str="bezier"):
+def draw_square(
+    x_nodes: int = 3,
+    y_nodes: int = 3,
+    width: int = 1000,
+    height: int = 1000,
+    draw_points: bool = False,
+    samples: int = 100,
+    curve_type: str = "bezier",
+    **kwargs,
+):
     im = Image.new("RGB", (width, height), "black")
     draw = ImageDraw.Draw(im)
     n_nodes = 2 * x_nodes + 2 * y_nodes

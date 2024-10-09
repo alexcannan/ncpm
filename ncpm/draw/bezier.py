@@ -45,6 +45,7 @@ def make_bezier(xys):
 
 
 def draw_bezier_curve(draw: ImageDraw, xys, samples=100):
+    # XXX: these curves seem to have whitespace inside the lines, it's breaking connected components
     ts = [t/samples for t in range(samples+1)]
     bezier = make_bezier(xys)
     points = bezier(ts)

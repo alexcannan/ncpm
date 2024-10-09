@@ -1,15 +1,17 @@
 import itertools
+import random
+import sys
 
 import cv2
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
-from ncpm.draw.color import color_generator
+from ncpm.draw.color import equicolors
 from ncpm.draw.square import draw_square
 
 
-def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, color_type: str="prism", *args, **kwargs):
+def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, *args, **kwargs):
     tile_width = 300
     tile_height = 300
     im = Image.new("RGB", (grid_size * tile_width, grid_size * tile_height), "black")
@@ -23,8 +25,10 @@ def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, color_type: str
     img_binary = np.where(img_array == 0, 1, 0).astype(np.uint8)  # Invert: 0 for background, 1 for foreground
     num_labels, labels = cv2.connectedComponents(img_binary)
 
-    color_gen = color_generator(color_type)
-    label_colors = {label: next(color_gen) for label in range(1, num_labels)}  # Exclude the background (label 0)
+    print(f"{num_labels=}", file=sys.stderr)
+    colors = equicolors(num_labels, **kwargs)
+    random.shuffle(colors)
+    label_colors = {label: color for label, color in zip(range(1, num_labels), colors)}
 
     colored_img = np.zeros((*img_array.shape, 3), dtype=np.uint8)  # Prepare an RGB array
     for label in range(1, num_labels):
