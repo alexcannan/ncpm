@@ -16,23 +16,23 @@ def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, *args, **kwargs
     tile_height = 300
     im = Image.new("RGB", (grid_size * tile_width, grid_size * tile_height), "black")
     for i, j in tqdm(itertools.product(range(grid_size), range(grid_size)), desc="drawing tiles", total=grid_size**2):
-        im.paste(draw_square(x_nodes, y_nodes, width=tile_width, height=tile_height, *args, **kwargs), (i * tile_width, j * tile_height))
+        im.paste(draw_square(x_nodes, y_nodes, width=tile_width, height=tile_height, *args, **kwargs),
+                 (i * tile_width, j * tile_height))
+
     grid_width = 6000
     grid_height = 6000
     im = im.resize((grid_width, grid_height), resample=Image.Resampling.BICUBIC)
 
-    img_array = np.array(im.convert("L"))  # Convert to grayscale for connected components
-    img_binary = np.where(img_array == 0, 1, 0).astype(np.uint8)  # Invert: 0 for background, 1 for foreground
+    img_array = np.array(im.convert("L"))
+    img_binary = np.where(img_array == 0, 1, 0).astype(np.uint8)
+
     num_labels, labels = cv2.connectedComponents(img_binary)
 
-    colors = equicolors(num_labels, **kwargs)
-    random.shuffle(colors)
-    print(f"{num_labels=} {len(colors)=}", file=sys.stderr)
-    label_colors = {label: color for label, color in zip(range(1, num_labels), colors)}
+    colors = np.array(equicolors(num_labels, **kwargs), dtype=np.uint8)
+    np.random.shuffle(colors)
+    colors = np.insert(colors, 0, [0, 0, 0], axis=0)
 
-    colored_img = np.zeros((*img_array.shape, 3), dtype=np.uint8)  # Prepare an RGB array
-    for label in range(1, num_labels):
-        colored_img[labels == label] = label_colors[label]  # Assign color to the label region
+    colored_img = colors[labels]  # Direct mapping from labels to colors via advanced indexing
 
     im_colored = Image.fromarray(colored_img)
 
