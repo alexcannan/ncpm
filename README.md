@@ -21,7 +21,7 @@ $ python3 -m ncpm.draw --help
 ```
 
 ```bash
-$ python3 -m ncpm.draw 2 3 --grid --color rainbow3 --curve formulaic --grid-size 12
+$ python3 -m ncpm.draw 2 3 --grid --curve formulaic --grid-size 12 --saturation 60
 # your generated image will open after processing
 ```
 
