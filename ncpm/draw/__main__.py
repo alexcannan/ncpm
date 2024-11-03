@@ -18,11 +18,14 @@ parser.add_argument("--colorstart", type=float, default=0, help="center of color
 parser.add_argument("--curve", type=str, default="formulaic", help="curve type (bezier, bezier_centered, line, formulaic)")
 parser.add_argument("--grid", action="store_true", help="create a grid of squares")
 parser.add_argument("--grid-size", type=int, default=5, help="size of grid")
+parser.add_argument("--smoothing", type=int, default=2, help="size of smoothing kernel (0 to disable)")
 args = parser.parse_args()
+
 if args.grid:
     draw_square_grid(
         draw_points=args.points,
         curve_type=args.curve,
+        smoothing_dim=args.smoothing,
         **vars(args),
     ).show()
 else:

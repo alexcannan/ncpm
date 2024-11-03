@@ -11,7 +11,7 @@ from ncpm.draw.color import equicolors
 from ncpm.draw.square import draw_square
 
 
-def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, *args, **kwargs):
+def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, smoothing_dim: int, *args, **kwargs):
     tile_width = 300
     tile_height = 300
     im = Image.new("RGB", (grid_size * tile_width, grid_size * tile_height), "black")
@@ -34,6 +34,8 @@ def draw_square_grid(grid_size: int, x_nodes: int, y_nodes: int, *args, **kwargs
 
     colored_img = colors[labels]  # Direct mapping from labels to colors via advanced indexing
 
-    im_colored = Image.fromarray(colored_img)
+    # antialiasing
+    kernel = np.ones((smoothing_dim,smoothing_dim),np.float32)/(smoothing_dim**2)
+    smoothed_colored_img = cv2.filter2D(colored_img,-1,kernel)
 
-    return im_colored
+    return Image.fromarray(smoothed_colored_img)
